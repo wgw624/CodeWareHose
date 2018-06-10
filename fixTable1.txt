@@ -1,0 +1,171 @@
+/**
+ * Created by wei_guangwei on 2017/11/22.
+ */
+(function($,window,document,undefined){
+    var fixTableHead = function(table){
+        this.$element = table,
+        this.options={
+            'bgcolor':'rgb(255,255,255)',
+            'tabHeadBgcolor':'rgb(255,255,255)',
+             'colPos':'absolute',
+             'w':'100%',
+             'h':'100%',
+             'fixRowId':'fixHeadId',
+             'fixColId':'',
+             'fixBodyId':'fixBodyId',
+        }
+    }
+    fixTableHead.prototype={
+        fixRow:function(){
+            var fixTableH = this;
+            this.$element.each(function(index,dom){
+                debugger
+                fixTableH.deleteFixTableHead(index,dom);
+                var tablePar = $(dom).parent();
+                var headTabbleDiv = fixTableH.createTabHead(index,dom,fixTableH);
+                var bodyTableDiv = fixTableH.createTabBody(index,dom,fixTableH);
+
+                var fixColDiv = fixTableH.createFixColTable(index,dom,fixTableH);
+                 var htm = headTabbleDiv[0].outerHTML + fixColDiv[0].outerHTML + bodyTableDiv[0].outerHTML
+
+                /*var htm = headTabbleDiv[0].outerHTML + bodyTableDiv[0].outerHTML*/
+
+                $(tablePar[0]).html(htm);
+                $(tablePar[0]).css("overflow","hidden")
+                fixTableH.bindScroll("fixBodyId"+index,"fixHeadId"+index);
+            });
+
+        },
+        createFixColTable:function(index,dom,fixTableH){
+            var trObj = $(dom).find("tr").eq(0);
+            var divW = 0;
+            $(trObj).find("td[class=fixCol],th[class=fixCol]").each(function(){
+                divW = divW + $(this).outerWidth();
+            });
+
+            var fixColHtml = "";
+            var fixColTabDiv = $("<div class='fixTableColDiv'</div>")
+            fixColTabDiv.attr("id",fixTableH.options.fixColId+index);
+            fixColTabDiv.css({'width':divW,'background-color':fixTableH.options.tabHeadBgcolor,'position':'absolute'});
+
+            $(dom).find("tr").each(function(index){
+                var tdHtml = "";
+                var tr = $("<tr></tr>");
+                $(this).find("th[class=fixCol],td[class=fixCol]").each(function(index){
+                    tdHtml = tdHtml +$(this)[0].outerHTML;
+                });
+                $(tr).html(tdHtml);
+                fixColHtml = fixColHtml + $(tr)[0].outerHTML;
+            });
+            var table = $("<table class='fixTableCol fixTableHeadTable'>"+fixColHtml+"</table>")
+            fixColTabDiv.html(table);
+            return fixColTabDiv;
+        },
+        createTabHead:function(index,dom,fixTableH){
+            var fixTr = $(dom).find("tr[class=fixRow]");
+            var fixHtml = "";
+            var fixH = 0;
+            if(fixTr !=undefined && fixTr.length>0){
+                $(fixTr).each(function(){
+                    fixHtml = fixHtml + $(this)[0].outerHTML;
+                    fixH = fixH+$(this).outerHeight();
+                });
+            }else{
+                var th = $(dom).find("tr th");
+                fixH = th.eq(0).outerHeight();
+                var trh = $(dom).find("tr").eq(0);
+                fixHtml = trh[0].outerHTML
+            }
+
+            var headId = "fixHeadId"+index;
+
+            var fTabHeadDiv = $("<div></div>")
+            fTabHeadDiv.css({'width':$(dom).width(),'height':fixH,'background-color':fixTableH.options.tabHeadBgcolor,'overflow':'hidden','position':'absolute'})
+            fTabHeadDiv.attr("id",headId)
+            fTabHeadDiv.addClass('fixTableHead')
+
+
+            var tablecls = $(dom).attr("class");
+            var maxWidthTr = fixTableH.getMaxWidthTr(index,dom);
+            var tableHead = "<table  class="+tablecls+">"+ fixHtml + maxWidthTr[0].outerHTML+"</table>"
+            $(fTabHeadDiv[0]).html(tableHead);
+            return fTabHeadDiv;
+        },
+        createTabBody:function(index,dom,fixTableH){
+            var fixBodyId = "fixBodyId"+index;
+            var fTabDiv = $("<div class='fixTableBody'></div>");
+            fTabDiv.css({'width':fixTableH.options.w,height:fixTableH.options.h,'overflow':'auto'});
+            $(fTabDiv).attr("id",fixBodyId);
+            $(fTabDiv).html($(dom)[0].outerHTML)
+            $(dom).width($(dom).width());
+            return fTabDiv;
+        },
+        deleteFixTableHead:function(index,dom){
+            if($(".fixTableHead,.fixTableColDiv").length>0){
+                var tableObj = dom;
+                var tabPar = $(dom).parent().parent();
+                $(tabPar).html(tableObj);
+            }
+        },
+        getMaxWidthTr:function(index,dom){
+            var trNum = 0;
+            var isFlag = false;
+            if($("#calMaxWithTd").length>0){
+                isFlag =true;
+            }
+            var rowCount = $(dom).find("tr").length;
+
+            var colCount = $($(dom).find("tr").eq(rowCount-1)).find("td").length;
+            var TdText = "";
+            for(var i=0;i<colCount;i++){
+                var tdW = 0;
+                var tdWB = -1;
+                var maxTdText = "";
+                for(var j =0;j<rowCount;j++){
+                    var tdObj = $($(dom).find("tr").eq(j)).find("td,th").eq(i);
+                    var tdText = $(tdObj).html();
+                    if(isFlag){
+                        $("#calMaxWithTd").text(tdText)
+                        tdW = $("#calMaxWithTd").width();
+                        if(tdW > tdWB){
+                            tdWB = tdW;
+                            maxTdText = $(tdObj)[0].outerHTML;
+                        }
+                        $("#calMaxWithTd").text("");
+                    }else{
+                        if(tdText.length > tdW){
+                            tdW = tdText.length;
+                            maxTdText = $(tdObj)[0].outerHTML;
+                        }
+                    }
+                }
+                TdText = TdText + maxTdText;
+            }
+            var headTrObj = $("<tr>"+TdText+"</tr>")
+
+            return headTrObj;
+        },
+        bindScroll:function(scrollId,bindRowId,bindColId){
+            var scrollLeft = 0;
+            var scrollTop = 0;
+            $("#"+scrollId).scroll(function(){
+                var left = this.scrollLeft;
+                var top = this.scrollTop;
+                if(scrollLeft !=left){
+                    $("#"+bindRowId).css("left",-left);
+                }
+                if(scrollTop!=top){
+                    $("#"+bindColId).css("top",-top);
+                }
+                scrollLeft = left;
+                scrollTop = top;
+            });
+        },
+
+    }
+
+    $.fn.fixTableHeadRow = function(){
+        var thr = new fixTableHead(this);
+        return thr.fixRow();
+    }
+})(jQuery,window,document);
